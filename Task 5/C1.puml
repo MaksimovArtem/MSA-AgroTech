@@ -1,0 +1,44 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(director, "Директор", "Просматривает состояние фермы")
+Person(animal_analyst, "Аналитик по животным", "Анализирует состояние животных")
+Person(equipment_analyst, "Аналитик по оборудованию", "Анализирует состояние оборудования")
+Person(operator, "Работник фермы", "Получает алерты и выполняет действия на месте")
+
+System(platform, "Платформа управления фермами", "Центральная аналитика, хранение данных, API, аутентификация и интеграции")
+System(edge, "Edge Agent (Конкретная ферма)","Локальный сбор данных, анализ видео, управление оборудованием")
+System_Ext(sensor, "Датчики оборудования", "Состояние оборудования, количество фуража")
+System_Ext(camera, "Система видеообнаружения", "Видеопоток для анализа поведения")
+System_Ext(equipment, "Система управления оборудованием", "Исполняемые устройства(Кормушки/Поилки)")
+System_Ext(bi, "АгроТех X - BI","BI-модуль компании собирает и визуализирует метрики")
+System_Ext(payment_system, "Модуль ЮКасса", "Российская платежная система")
+
+Rel(sensor, edge, "Передаёт телеметрию", "MQTT")
+Rel(camera, edge, "Передаёт видеопоток", "RSTP")
+Rel(edge, equipment, "Управляет оборудованием", "MQTT")
+Rel(edge, operator, "Отправляет локальные уведомления", "Push/SMS")
+Rel(edge, platform, "Синхронизация данных", "HTTPS")
+Rel(platform, edge, "Управление фермой через отправку политик", "HTTPS")
+Rel(director, bi, "Просматривает отчёты")
+Rel(animal_analyst, platform, "Просматривает аналитику по животным для своей фермы")
+Rel(equipment_analyst, platform, "Просматривает аналитику по оборудованию для своей фермы")
+Rel(platform, bi, "Передаёт метрики", "HTTPS")
+Rel(platform, payment_system, "Оплата подписки", "HTTPS")
+@enduml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

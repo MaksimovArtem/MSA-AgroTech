@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+
+System_Ext(equipment, "Система управления оборудованием","Исполняемые устройства")
+System(platform, "Платформа управления фермами")
+
+Container(broker_mqtt, "Брокер для событий оборудования", "RabbitMQ", "Передача событий оборудования")
+ContainerQueue(broker_events1, "Брокер для событий", "RabbitMQ", "События животных")
+ContainerQueue(broker_events2, "Брокер для событий", "RabbitMQ", "Локальные алерты")
+Container(edge_api_gateway, "Edge API Gateway", "Go/Nginx", "Точка входа в систему")
+ContainerDb(local_storage, "БД фермы", "Postgres", "Буферизация данных фермы")
+Container(local_alerts, "Сервис отправки уведомлений", "Go", "Локальные алерты")
+Container(video_service, "Сервис обработки видео", "Go + Python(ML)", "Анализ состояния животных")
+
+Container(edge_manager, "Сервис управления фермой") {
+    Component(service_layer, "Service Layer", "Объединяет телеметрию и видео, формирует внутренние события")
+    Component(device_controller, "Device Controller", "Обработка событий оборудования")
+    Component(ml_events_controller, "ML Events Controller", "Обработка событий по животным")
+    Component(policy_controller, "Policy Controller", "Обработка политик с платформы")
+    Component(alerts_generator, "Alert Generator", "Формирует алерты для локального персонала")
+    Component(aggregator, "Data Aggregator", "Формирует агрегаты состояния фермы для платформы. Отправляет с заданной периодичностью")
+}
+
+Rel(broker_mqtt, device_controller, "Телеметрия", "MQTT")
+Rel(device_controller, service_layer, "Бизнес логика работы с оборудованием")
+Rel(service_layer, alerts_generator, "Данные для алертов")
+Rel(alerts_generator, broker_events2, "События для алертов")
+Rel(broker_events1, ml_events_controller, "События по животным", "JSON")
+Rel(ml_events_controller, service_layer, "Бизнес логика работы с животными")
+Rel(broker_events2, local_alerts, "Отправка алертов")
+Rel(video_service, broker_events1, "Отправка событий по животным", "JSON")
+Rel(service_layer, equipment, "Управление оборудованием", "MQTT")
+Rel(edge_api_gateway, policy_controller, "Политики с платформы", "JSON")
+Rel(policy_controller, service_layer, "Политики с платформы", "JSON")
+Rel(service_layer, aggregator, "Формирование агрегатов состояния")
+Rel(aggregator, local_storage, "Сохраняет агрегаты", "SQL")
+Rel(aggregator, platform, "Отправляет арегат состояния фермы", "HTTPS")
+
+@enduml

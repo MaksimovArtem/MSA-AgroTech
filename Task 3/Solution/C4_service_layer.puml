@@ -1,0 +1,48 @@
+@startuml
+
+package "service_layer" {
+
+    class ServiceLayer {
+        + Queue<TelemetryEvent> telemetryQueue
+        + Queue<AnimalEvent> animalEventQueue
+        + Queue<AlertEvent> alertQueue
+        + <FarmState> farmState
+        + void ProcessTelemetry(event: TelemetryEvent)
+        + void ProcessAnimalEvent(event: AnimalEvent)
+        + void GenerateAlerts()
+        + <FarmState> AggregateState()
+    }
+
+    class TelemetryEvent {
+        + String type
+        + String deviceId
+        + Float value
+        + DateTime timestamp
+    }
+
+    class AnimalEvent {
+        + String type
+        + String location
+        + DateTime timestamp
+    }
+
+    class AlertEvent {
+        + String type
+        + String target
+        + String message
+        + DateTime timestamp
+    }
+
+    class FarmState {
+        + Int numAnimals
+        + map<string, string> equipmentStatus
+        + DateTime timestamp
+    }
+}
+
+ServiceLayer "1" --> "0..*" TelemetryEvent : receives
+ServiceLayer "1" --> "0..*" AnimalEvent : receives
+ServiceLayer "1" --> "0..*" AlertEvent : produces
+ServiceLayer "1" --> "1" FarmState : maintains
+
+@enduml

@@ -1,0 +1,27 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+
+Container(device_gateway, "Device Gateway", "Go", "Приём телеметрии и видеопотока с устройств и пересылка на Платформу")
+
+Container(video_service, "Сервис обработки видео") {
+
+    Component(rtsp_client, "RTSP Client", "Go", "Приём видеопотока от Device GW через RTSP")
+    Component(stream_buffer, "Stream Buffer", "Go", "Буферизация кадров для обработки нейросетью")
+    Component(ml_processor, "ML Processor", "Python", "Анализ поведения животных, выявление событий")
+    Component(event_publisher, "Event Publisher", "Go", "Публикация событий в брокер")
+    Component(file_storage_adapter, "File Storage Adapter", "Go", "Сохранение видео в S3")
+}
+
+Container(file_storage, "Объектное хранилище", "S3", "Хранение видео и медиа")
+Container(ml_events_broker, "Брокер", "RabbitMQ", "Брокер событий с камер")
+
+Rel(device_gateway, rtsp_client, "Видеопоток", "RTSP")
+Rel(rtsp_client, stream_buffer, "Передача кадров")
+Rel(stream_buffer, ml_processor, "Кадры для анализа")
+Rel(ml_processor, event_publisher, "События животных")
+Rel(event_publisher, ml_events_broker, "Публикация событий в брокер")
+Rel(stream_buffer, file_storage_adapter, "Сохранение видео")
+Rel(file_storage_adapter, file_storage, "Сохраняет видео")
+@enduml

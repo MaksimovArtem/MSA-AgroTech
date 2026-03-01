@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+
+System_Ext(camera, "Система видеообнаружения", "Видеопоток для анализа поведения")
+System_Ext(sensor, "Датчики оборудования", "Состояние оборудования, количество фуража")
+System_Ext(equipment, "Система управления оборудованием","Исполняемые устройства(Кормушки/Поилки)")
+
+Container(device_gateway, "Device Gateway") {
+    Component(mqtt_consumer, "Telemetry Consumer", "Приём телеметрии от датчиков оборудования через MQTT")
+    Component(video_consumer, "Video Consumer", "Приём видеопотока с камер через HTTPS")
+    Component(command_consumer, "Command Consumer", "Прием команд оборудования")
+    Component(event_publisher, "Telemetry Publisher", "Публикация телеметрии оборудования")
+    Component(command_publisher, "Command Publisher", "Публикация команд для оборудования")
+}
+
+Container(video_service, "Video Analytics Service", "Go + Python(ML)", "Обработка видеопотока и генерация событий")
+Container(device_service1, "Сервис работы с оборудованием", "Управление оборудованием")
+Container(device_service2, "Сервис работы с оборудованием", "Управление оборудованием")
+ContainerQueue(broker_mqtt1, "Брокер для событий оборудования", "RabbitMQ", "Передача событий оборудования")
+ContainerQueue(broker_mqtt2, "Брокер для событий оборудования", "RabbitMQ", "Передача событий оборудования")
+
+Rel(sensor, mqtt_consumer, "Телеметрия", "MQTT")
+Rel(camera, video_consumer, "Видеопоток", "HTTPS")
+Rel(mqtt_consumer, event_publisher, "Передача данных на публикацию")
+Rel(command_consumer, command_publisher, "Передача данных на публикацию")
+Rel(command_publisher, equipment, "Управление оборудованием", "MQTT")
+Rel(event_publisher, broker_mqtt2, "Телеметрия с датчиков", "MQTT")
+Rel(broker_mqtt2, device_service2, "Телеметрия с датчиков", "MQTT")
+Rel(video_consumer, video_service, "Видеопоток для аналитики", "HTTPS")
+Rel(device_service1, broker_mqtt1, "Команды управления оборудованием", "MQTT")
+Rel(broker_mqtt1, command_consumer, "Команды управления оборудованием", "MQTT")
+
+@enduml
