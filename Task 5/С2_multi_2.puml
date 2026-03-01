@@ -1,0 +1,104 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_TOP_DOWN()
+
+Person(director, "Директор", "Просматривает отчёты по фермам")
+Person(animal_analyst, "Аналитик по животным", "Анализирует состояние животных")
+Person(equipment_analyst, "Аналитик по оборудованию", "Анализирует состояние оборудования")
+Person(operator, "Работник фермы", "Реагирует на алерты")
+
+System_Ext(sensor, "Датчики оборудования", "Состояние оборудования, количество фуража")
+System_Ext(camera, "Система видеообнаружения", "Видеопоток для анализа поведения")
+System_Ext(equipment, "Система управления оборудованием","Исполняемые устройства(Кормушки/Поилки)")
+System_Ext(bi, "АгроТех X - BI","BI-модуль компании собирает и визуализирует метрики")
+
+System_Boundary(platform, "Платформа управления фермами") {
+
+    Boundary(frontend, "Frontend") {
+        Container(web, "Web-приложение", "React/Vue", "Интерфейс аналитики")
+        Container(mobile, "Mobile-приложение", "React Native", "Интерфейс аналитики")
+    }
+
+    Boundary(backend, "Backend") {
+
+        Container(api_gateway, "API Gateway", "Go/Nginx", "Точка входа в систему")
+
+        Boundary(auth, "Работа с пользователями") {
+            Container(user_service, "Сервис работы с пользователями", "Go", "Аутентификация и авторизация")
+        }
+
+        Boundary(tenants, "Работа с тенантами") {
+            Container(tenant_service, "Сервис работы с тенантами", "Go")
+            ContainerDb(tenant_db, "БД с данными о тенантах", "PostgreSQL", "Данные о тенантах")
+            Container(tenant_db_manager, "DataSource Manager", "Go", "Маршрутизация запросов к нужному инстансу БД")
+        }
+
+        Boundary(core, "Core") {
+            Boundary(animals, "Животные") {
+                Container(animal_service, "Сервис работы с животными", "Go", "")
+            }
+
+            Boundary(devices, "Оборудование") {
+                Container(device_service, "Сервис работы с оборудованием", "Go", "Управление оборудованием")
+            }
+        }
+
+        Boundary(events, "События") {
+            Container(broker, "Брокер", "RabbitMQ", "Передача доменных событий")
+            Container(metric_service, "Сервис отправки метрик", "Go", "Агрегация и пересылка метрик")
+        }
+
+        ContainerDb(tenant_db_instance, "Tenant Runtime DB (Users, Animals, Devices)", "PostgreSQL", "Базы пользователей, оборудования и животных для теннатов")
+    }
+}
+
+System_Boundary(edge, "Edge Agent (Ферма)") {
+    Container(broker_mqtt, "Брокер для событий оборудования", "RabbitMQ", "Передача событий оборудования")
+    Container(broker_events, "Брокер для событий", "RabbitMQ", "Передача событий оборудования")
+    Container(local_alerts, "Сервис отправки уведомлений", "Go", "Локальные алерты")
+    Container(edge_api_gateway, "Edge API Gateway", "Go/Nginx", "Точка входа в систему")
+    ContainerDb(local_storage, "БД фермы", "Postgres", "Буферизация данных фермы")
+    Container(file_storage, "Объектное хранилище", "S3", "Видео и медиа")
+    Container(edge_manager, "Сервис управления фермой", "Go", "Бизнес-логика на ферме")
+    Container(video_service, "Сервис обработки видео", "Go + Python(ML)", "Анализ состояния животных")
+}
+
+Rel(animal_analyst, web, "Использует")
+Rel(equipment_analyst, web, "Использует")
+Rel(animal_analyst, mobile, "Использует")
+Rel(equipment_analyst, mobile, "Использует")
+Rel(director, bi, "Просматривает отчёты")
+Rel(web, api_gateway, "Запросы к системе", "HTTPS")
+Rel(mobile, api_gateway, "Запросы к системе", "HTTPS")
+Rel(api_gateway, user_service, "Запросы на аутентификацию","HTTP")
+Rel(api_gateway, animal_service, "Запросы к сервису животных", "HTTP")
+Rel(api_gateway, device_service, "Запросы к сервису оборудования", "HTTP")
+Rel(user_service, tenant_db_manager, "Работает со своим инстансом БД","HTTP")
+Rel(user_service, tenant_service, "Взаимодействие с тенантом", "HTTP")
+Rel(tenant_service, tenant_db, "Обновляет состояние", "SQL")
+Rel(animal_service, tenant_db_manager, "Работает со своим инстансом БД", "HTTP")
+Rel(device_service, tenant_db_manager, "Работает со своим инстансом БД", "HTTP")
+Rel(tenant_db_manager, tenant_service, "Сопоставляет тенанта и иснтанс БД", "HTTP")
+Rel(tenant_db_manager, tenant_db_instance, "Отправляет запрос в нужный инстанс БД", "SQL")
+Rel(metric_service, bi, "Передача метрик", "HTTPS")
+Rel(animal_service, broker, "Публикует события")
+Rel(device_service, broker, "Публикует события")
+Rel(user_service, broker, "Публикует события")
+Rel(broker, metric_service, "Метрики")
+Rel(camera, video_service, "Видеопоток", "RTSP")
+Rel(sensor, broker_mqtt, "Телеметрия", "MQTT")
+Rel(broker_mqtt, edge_manager, "Телеметрия", "MQTT")
+Rel(video_service, broker_events, "События по животным")
+Rel(broker_events, edge_manager, "События по животным")
+Rel(edge_manager, broker_events, "События для персонала")
+Rel(edge_api_gateway, edge_manager, "Команды управления")
+Rel(edge_manager, equipment, "Команды управления", "MQTT")
+Rel(broker_events, local_alerts, "Алерты")
+Rel(local_alerts, operator, "Push/SMS")
+Rel(edge_manager, local_storage, "Обновление данных", "SQL")
+Rel(video_service, file_storage, "Сохраняет видео")
+Rel(edge_manager, api_gateway, "Состояние фермы(аггрегат)", "HTTPS")
+Rel(device_service, edge_api_gateway, "Политики управления", "HTTPS")
+
+@enduml

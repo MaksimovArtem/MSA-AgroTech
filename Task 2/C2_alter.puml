@@ -1,0 +1,95 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+Person(director, "Директор", "Просматривает отчёты по фермам")
+Person(animal_analyst, "Аналитик по животным", "Анализирует состояние животных")
+Person(equipment_analyst, "Аналитик по оборудованию", "Анализирует состояние оборудования")
+Person(operator, "Работник фермы", "Реагирует на алерты")
+
+System_Ext(sensor, "Датчики оборудования", "Состояние оборудования, количество фуража")
+System_Ext(camera, "Система видеообнаружения", "Видеопоток для анализа поведения")
+System_Ext(equipment, "Система управления оборудованием","Исполняемые устройства(Кормушки/Поилки)")
+System_Ext(bi, "АгроТех X - BI","BI-модуль компании собирает и визуализирует метрики")
+System_Ext(notification, "Система оповещения","Отправка уведомлений на уровне платформы")
+
+
+System_Boundary(platform, "Платформа управления фермами") {
+
+    Boundary(devices_mqtt, "Взаимодействие с фермой") {
+        Container(broker_mqtt, "Брокер для событий оборудования", "RabbitMQ", "Передача событий оборудования")
+        Container(edge_gateway, "Device Gateway", "Go", "Приём телеметрии и видеопотока")
+    }
+
+    Boundary(frontend, "Frontend") {
+        Container(web, "Web-приложение", "React / Vue", "Интерфейс аналитики")
+        Container(mobile, "Мобильное приложение", "React / Vue", "Интерфейс аналитики")
+    }
+
+    Boundary(backend, "Backend") {
+
+        Container(gateway, "API Gateway", "Go/Nginx", "Точка входа в систему")
+
+        Boundary(auth, "Аутентификация") {
+            Container(user_service, "Сервис работы с пользователями", "Go", "Аутентификация и авторизация")
+            ContainerDb(user_db, "БД с данными пользователей", "PostgreSQL", "Данные пользователей")
+        }
+
+        Boundary(core, "Core") {
+            Boundary(animals, "Животные") {
+                Container(animal_service, "Сервис работы с животными", "Go", "")
+                Container(video_service, "Сервис обработки видео", "Go + Python(ML)", "Анализ состояния животных")
+                ContainerDb(animals_db, "БД с данными по животным", "PostgreSQL", "Бизнес-данные")
+                Container(file_storage, "Объектное хранилище", "S3", "Видео и медиа")
+                Container(ml_events_broker, "Брокер", "RabbitMQ", "Брокер событий с камер")
+            }
+
+            Boundary(devices, "Оборудование") {
+                Container(device_service, "Сервис работы с оборудованием", "Go", "Управление оборудованием")
+                ContainerDb(devices_db, "БД с данными по оборудованию", "PostgreSQL", "Бизнес-данные")
+            }
+        }
+
+        Boundary(events, "События") {
+            Container(broker, "Брокер", "RabbitMQ", "Передача доменных событий")
+            Container(metric_service, "Сервис отправки метрик", "Go", "Агрегация и пересылка метрик")
+            Container(notification_service, "Сервис отправки уведомлений", "Go", "Обработка событий уведомлений")
+        }
+
+
+    }
+}
+
+Rel(animal_analyst, web, "Использует")
+Rel(equipment_analyst, web, "Использует")
+Rel(animal_analyst, mobile, "Использует")
+Rel(equipment_analyst, mobile, "Использует")
+Rel(director, bi, "Просматривает отчёты")
+Rel(notification_service, operator, "Доставляет уведомления")
+Rel(web, gateway, "Запросы к системе", "HTTPS")
+Rel(mobile, gateway, "Запросы к системе", "HTTPS")
+Rel(gateway, user_service, "Запросы на аутентификацию", "HTTP")
+Rel(gateway, animal_service, "Запросы к сервису животных", "HTTP")
+Rel(gateway, device_service, "Запросы к сервису оборудования", "HTTP")
+Rel(user_service, user_db, "Обновляет состояние", "SQL")
+Rel(video_service, ml_events_broker, "Отправляет события с камер")
+Rel(ml_events_broker, animal_service, "События с камер")
+Rel(animal_service, animals_db, "Обновляет состояние", "SQL")
+Rel(video_service, file_storage, "Сохраняет видео")
+Rel(device_service, devices_db, "Обновляет состояние", "SQL")
+Rel(camera, edge_gateway, "Видеопоток", "RTSP")
+Rel(sensor, edge_gateway, "Телеметрия", "MQTT")
+Rel(edge_gateway, broker_mqtt, "Телеметрия c датчиков", "MQTT")
+Rel(edge_gateway, video_service, "Видеопоток", "RTSP")
+Rel(broker_mqtt, device_service, "Телеметрия", "MQTT")
+Rel(device_service, broker_mqtt , "События для управления оборудованием", "MQTT")
+Rel(broker_mqtt, edge_gateway, "Команды для оборудования", "MQTT")
+Rel(edge_gateway, equipment, "Команды управления оборудованием", "MQTT")
+Rel(animal_service, broker, "Публикует события")
+Rel(device_service, broker, "Публикует события")
+Rel(user_service, broker, "Публикует события")
+Rel(broker, notification_service, "События для уведомлений")
+Rel(broker, metric_service, "Метрики")
+Rel(metric_service, bi, "Передача метрик", "HTTPS")
+@enduml
+

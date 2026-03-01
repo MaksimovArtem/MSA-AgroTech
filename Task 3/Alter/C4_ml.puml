@@ -1,0 +1,35 @@
+@startuml
+
+package "ml_processor" {
+    class MLProcessor {
+        + <NeuralNetworkModel> model
+        + frameBuffer: List<Frame>
+        + bufferSize: int
+        + void AddFrame(frame: Frame)
+        + List<AnimalEvent> ProcessBatch(frames: List <Frame>)
+        + void ClearBuffer()
+    }
+
+    class AnimalEvent {
+        + type: string
+        + location: string
+        + timestamp: DateTime
+    }
+
+    class NeuralNetworkModel {
+        + map some_model_settings
+        + List<AnimalEvent> Predict(frame: <Frame>)
+    }
+
+    class Frame {
+        + byte[] imageData
+        + DateTime timestamp
+    }
+}
+
+MLProcessor "1" --> "1..*" NeuralNetworkModel : uses
+MLProcessor "1" --> "0..*" Frame : buffers
+Frame "1" --> "1" NeuralNetworkModel : analyses
+NeuralNetworkModel "1" --> "1..*" AnimalEvent : predicts
+
+@enduml

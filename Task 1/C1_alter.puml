@@ -1,0 +1,25 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(director, "Директор", "Просматривает состояние фермы")
+Person(animal_analyst, "Аналитик по животным", "Анализирует состояние животных")
+Person(equipment_analyst, "Аналитик по оборудованию", "Анализирует состояние оборудования")
+Person(operator, "Работник фермы", "Получает алерты и выполняет действия на месте")
+
+System(platform, "Платформа управления фермами","Аналитика, хранение данных, API, аутентификация и интеграции")
+System_Ext(sensor, "Датчики оборудования", "Состояние оборудования, количество фуража")
+System_Ext(camera, "Система видеообнаружения", "Видеопоток для анализа поведения")
+System_Ext(equipment, "Система управления оборудованием","Исполняемые устройства(Кормушки/Поилки)")
+System_Ext(bi, "АгроТех X - BI","BI-модуль компании собирает и визуализирует метрики")
+
+Rel(director, bi, "Просматривает отчеты")
+Rel(animal_analyst, platform, "Просматривает аналитику по животным")
+Rel(equipment_analyst, platform, "Просматривает аналитику по оборудованию")
+
+Rel(sensor, platform, "Передаёт телеметрию")
+Rel(camera, platform, "Передаёт видеопоток")
+Rel(platform, equipment, "Управляет оборудованием")
+Rel(platform, operator, "Уведомления по животным и оборудованию")
+
+Rel(platform, bi, "Передаёт агрегированные данные")
+@enduml
